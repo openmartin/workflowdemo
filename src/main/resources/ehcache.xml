@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         updateCheck="false">
+    <diskStore path="java.io.tmpdir/Tmp_EhCache"/>
+    <defaultCache eternal="false"
+                  maxElementsInMemory="1000"
+                  overflowToDisk="false"
+                  diskPersistent="false"
+                  timeToIdleSeconds="0"
+                  timeToLiveSeconds="600"
+                  memoryStoreEvictionPolicy="LRU"/>
+
+
+    <cache name="passwordRetryCache"
+           maxEntriesLocalHeap="2000"
+           eternal="false"
+           timeToIdleSeconds="1800"
+           timeToLiveSeconds="0"
+           overflowToDisk="false"
+           statistics="true">
+    </cache>
+
+    <cache name="report-cn"
+           eternal="false"
+           maxElementsInMemory="2"
+           overflowToDisk="false"
+           diskPersistent="false"
+           timeToIdleSeconds="300"
+           timeToLiveSeconds="300"
+           memoryStoreEvictionPolicy="LRU"/>
+
+    <cache name="report-en"
+           eternal="false"
+           maxElementsInMemory="2"
+           overflowToDisk="false"
+           diskPersistent="false"
+           timeToIdleSeconds="300"
+           timeToLiveSeconds="300"
+           memoryStoreEvictionPolicy="LRU"/>
+
+    <cache name="stock-ext"
+           eternal="false"
+           maxElementsInMemory="500"
+           overflowToDisk="false"
+           diskPersistent="false"
+           timeToIdleSeconds="0"
+           timeToLiveSeconds="300"
+           memoryStoreEvictionPolicy="LRU"/>
+
+</ehcache>

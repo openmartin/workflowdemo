@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+       xmlns:tx="http://www.alibaba.com/schema/stat"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://mybatis.org/schema/mybatis-spring
+       http://mybatis.org/schema/mybatis-spring.xsd http://www.alibaba.com/schema/stat http://www.alibaba.com/schema/stat.xsd">
+
+    <beans profile="dev,test">
+        <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+            <property name="location" value="classpath:application-dev.properties" />
+        </bean>
+
+        <!-- dataSource -->
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+            <!-- 基本属性 url、user、password -->
+            <property name="url" value="${spring.datasource.url}" />
+            <property name="username" value="${spring.datasource.username}" />
+            <property name="password" value="${spring.datasource.password}" />
+
+            <!-- 配置初始化大小、最小、最大 -->
+            <property name="initialSize" value="${spring.datasource.initialSize}" />
+            <property name="minIdle" value="${spring.datasource.minIdle}" />
+            <property name="maxActive" value="${spring.datasource.maxActive}" />
+
+            <!-- 配置获取连接等待超时的时间 -->
+            <property name="maxWait" value="${spring.datasource.maxWait}" />
+
+            <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+            <property name="timeBetweenEvictionRunsMillis" value="60000" />
+
+            <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+            <property name="minEvictableIdleTimeMillis" value="300000" />
+
+            <!-- 打开PSCache，并且指定每个连接上PSCache的大小 -->
+            <property name="poolPreparedStatements" value="true" />
+            <property name="maxPoolPreparedStatementPerConnectionSize" value="20" />
+
+            <!-- 配置监控统计拦截的filters -->
+            <property name="filters" value="stat" />
+        </bean>
+
+        <!-- transaction -->
+        <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+            <property name="dataSource" ref="dataSource" />
+        </bean>
+
+        <tx:annotation-driven/>
+
+        <!-- mybatis -->
+        <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+            <property name="dataSource" ref="dataSource" />
+            <property name="configLocation" value="${mybatis.config-locations}" />
+            <property name="mapperLocations" value="${mybatis.mapper-locations}" />
+        </bean>
+
+        <mybatis:scan base-package="com.example.workflowdemo.mapper" />
+
+        <!-- ehcache -->
+        <bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager" >
+            <property name="cacheManager" ref="ehcacheManager" />
+        </bean>
+        <bean id="ehcacheManager" class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+            <property name="configLocation" value="${spring.cache.ehcache.config}" />
+        </bean>
+
+
+        <context:component-scan base-package="com.example.workflowdemo" >
+            <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+        </context:component-scan>
+
+        <!-- cache wrapper -->
+        <bean id="cacheManagerWraper" class="com.example.workflowdemo.security.SpringCacheManagerWrapper" >
+            <property name="cacheManager" ref="cacheManager"/>
+        </bean>
+
+        <!-- 凭证匹配器 -->
+        <bean id="credentialsMatcher" class="com.example.workflowdemo.security.RetryLimitHashedCredentialsMatcher">
+            <constructor-arg ref="cacheManagerWraper" />
+            <property name="hashAlgorithmName" value="SHA-256" />
+            <property name="hashIterations" value="1" />
+            <property name="storedCredentialsHexEncoded" value="false" />
+        </bean>
+
+        <!-- Realm实现 -->
+        <bean id="userRealm" class="com.example.workflowdemo.security.UserRealm">
+            <property name="credentialsMatcher" ref="credentialsMatcher" />
+        </bean>
+
+        <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+            <!-- Single realm app.  If you have multiple realms, use the 'realms' property instead. -->
+            <property name="realm" ref="userRealm"/>
+            <!-- By default the servlet container sessions will be used.  Uncomment this line
+                 to use shiro's native sessions (see the JavaDoc for more): -->
+            <!-- <property name="sessionMode" value="native"/> -->
+        </bean>
+
+        <bean id="logout" class="org.apache.shiro.web.filter.authc.LogoutFilter">
+            <property name="redirectUrl" value="/login" />
+        </bean>
+
+        <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+            <property name="securityManager" ref="securityManager"/>
+            <property name="loginUrl" value="/login"/>
+            <!-- override these for application-specific URLs if you like:
+            <property name="loginUrl" value="/login.jsp"/>
+            <property name="successUrl" value="/home.jsp"/>
+            <property name="unauthorizedUrl" value="/unauthorized.jsp"/> -->
+            <!-- The 'filters' property is not necessary since any declared javax.servlet.Filter bean  -->
+            <!-- defined will be automatically acquired and available via its beanName in chain        -->
+            <!-- definitions, but you can perform instance overrides or name aliases here if you like: -->
+            <!-- <property name="filters">
+                <util:map>
+                    <entry key="anAlias" value-ref="someFilter"/>
+                </util:map>
+            </property> -->
+            <property name="filterChainDefinitions">
+                <value>
+                    # some example chain definitions:
+                    /admin/** = authc, roles[admin]
+                    /docs/** = authc, perms[document:read]
+                    /login = anon
+                    /logout = logout
+                    /unauthorized = anon
+                    /** = authc
+                    # more URL-to-FilterChain definitions here
+                </value>
+            </property>
+        </bean>
+
+        <!-- activiti -->
+        <bean id="processEngineConfiguration" class="org.activiti.spring.SpringProcessEngineConfiguration">
+            <property name="dataSource" ref="dataSource"/>
+            <property name="transactionManager" ref="transactionManager" />
+            <property name="jobExecutorActivate" value="false"/>
+            <property name="activityFontName" value="微软雅黑"/>
+            <property name="labelFontName" value="微软雅黑"/>
+            <property name="annotationFontName" value="微软雅黑"/>
+            <property name="deploymentResources" value="classpath:leave.bpmn"/>
+        </bean>
+
+        <bean id="processEngineFactory" class="org.activiti.spring.ProcessEngineFactoryBean">
+            <property name="processEngineConfiguration" ref="processEngineConfiguration"/>
+        </bean>
+        <bean id="repositoryService" factory-bean="processEngineFactory" factory-method="getRepositoryService"/>
+        <bean id="rumtimeService" factory-bean="processEngineFactory" factory-method="getRuntimeService"/>
+        <bean id="formService" factory-bean="processEngineFactory" factory-method="getFormService"/>
+        <bean id="identityService" factory-bean="processEngineFactory" factory-method="getIdentityService"/>
+        <bean id="taskService" factory-bean="processEngineFactory" factory-method="getTaskService"/>
+        <bean id="historyService" factory-bean="processEngineFactory" factory-method="getHistoryService"/>
+        <bean id="managementService" factory-bean="processEngineFactory" factory-method="getManagementService"/>
+
+
+    </beans>
+
+</beans>
