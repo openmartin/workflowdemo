@@ -21,7 +21,7 @@
 ---|---|---
 user01 | 123456 | 员工
 user02 | 123456 | 部门领导
-user02 | 123456 | 人事
+user03 | 123456 | 人事
 
 注意：Activiti `ACT_ID_GROUP` 和 ROLE 所起到的作用不一样，ROLE是apache shiro用到的角色，`ACT_ID_GROUP`是Activiti中流程用到的角色，
 在实际开发过程中需要同步这两张表，或者让Activiti使用ROLE的视图，让用户不用维护两套角色
